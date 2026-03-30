@@ -145,18 +145,6 @@ O botão C usa interrupção (IRQ):
 
 ---
 
-## Estrutura sugerida
-
-```
-/projeto-temporizador
-│── main.py
-│── ssd1306.py
-│── neopixel.py
-│── README.md
-```
-
----
-
 ## Possíveis melhorias
 
 * Adicionar botão de **pausa**
