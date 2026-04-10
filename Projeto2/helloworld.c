@@ -28,7 +28,7 @@ Pixy2 pixy;
 void setup()
 {
   Serial.begin(115200);
-  Serial.print("Starting...\n");
+  //Serial.print("Starting...\n");
   
   pixy.init();
 }
@@ -39,16 +39,16 @@ void loop()
   // grab blocks!
   pixy.ccc.getBlocks();
   
-  // If there are detect blocks, print them!
-  if (pixy.ccc.numBlocks)
+  // If there are detect 6 blocks, print them!
+  if (pixy.ccc.numBlocks == 6)
   {
-    Serial.print("Detected ");
+    //Serial.print("Detected ");
     Serial.println(pixy.ccc.numBlocks);
     for (i=0; i<pixy.ccc.numBlocks; i++)
     {
-      Serial.print("  block ");
-      Serial.print(i);
-      Serial.print(": ");
+      //Serial.print("  block ");
+      //Serial.print(i);
+      //Serial.print(": ");
       pixy.ccc.blocks[i].print();
     }
   }  
