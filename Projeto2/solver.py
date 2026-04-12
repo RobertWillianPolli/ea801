@@ -41,7 +41,7 @@ import kociemba
 
 # D   -> Giro simples da face inferior no sentido horário
 # D2  -> Giro duplo da face inferior no sentido horário
-# D'  -> Giro duplo da face inferior no sentido anti-horário
+# D'  -> Giro simples da face inferior no sentido anti-horário
 
 # L   -> Giro simples da face esquerda no sentido horário
 # L2  -> Giro duplo da face esquerda no sentido horário
@@ -49,12 +49,87 @@ import kociemba
 
 # B   -> Giro simples da face traseira no sentido horário
 # B2  -> Giro duplo da face traseira no sentido horário
-# B'  -> Giro duplo da face traseira no sentido anti-horário
+# B'  -> Giro simples da face traseira no sentido anti-horário
 
-# Ordem = superior, direita, frontal, inferior, esquerda, traseira
-scrambled_cube = "DRLUUBFBRBLURRLRUBLRDDFDLFUFUFFDBRDUBRUFLLFDDBFLUBLRBD"
+# Ordem = superior (U), direita (R), frontal (F), inferior (D), esquerda (L), traseira (B)
+
+converter = {"W":"U", 
+             "R":"F", 
+             "G":"L", 
+             "Y":"D", 
+             "O":"B", 
+             "B":"R"}
+
+superior = "GYGYWBOBW"            # branco    (U)
+frontal = "YRRWRGGYR"             # vermelho  (F)
+esquerda = "OGBYGROWR"            # verde     (L)
+inferior = "WRGOYOBGR"            # amarelo   (D)
+direita = "BWOWBOYGB"             # azul      (R)
+traseira = "YBWBOOYRW"            # laranja   (B)
+
+atual = superior + direita + frontal + inferior + esquerda + traseira
+
+scrambled_cube = ""
+scrambled_cube = "".join(converter[f] for f in atual)
 
 # Solve the cube
-solution = kociemba.solve(scrambled_cube)
+solution = kociemba.solve(scrambled_cube).split(' ')
 
-print(f"Solution: {solution.split(' ')}")
+print(solution)
+
+for x in solution:
+  if x == "U":
+    print("SUPERIOR sentido horário")
+
+  elif x == "U2":
+    print("SUPERIOR sentido horário duas vezes")
+
+  elif x == "U'":
+    print("SUPERIOR sentido anti-horário")
+
+  elif x == "R":
+    print("DIREITA sentido horário")
+  
+  elif x == "R2":
+    print("DIREITA sentido horário duas vezes")
+  
+  elif x == "R'":
+    print("DIREITA sentido anti-horário")
+  
+  elif x == "F":
+    print("FRONTAL sentido horário")
+  
+  elif x == "F2":
+    print("FRONTAL sentido horário duas vezes")
+  
+  elif x == "F'":
+    print("FRONTAL sentido anti-horário")
+
+  elif x == "D":
+    print("INFERIOR sentido horário")
+  
+  elif x == "D2":
+    print("INFERIOR sentido horário duas vezes")
+  
+  elif x == "D'":
+    print("INFERIOR sentido anti-horário")
+
+  elif x == "L":
+    print("ESQUERDA sentido horário")
+  
+  elif x == "L2":
+    print("ESQUERDA sentido horário duas vezes")
+  
+  elif x == "L'":
+    print("ESQUERDA sentido anti-horário")
+
+  elif x == "B":
+    print("TRASEIRA sentido horário")
+  
+  elif x == "B2":
+    print("TRASEIRA sentido horário duas vezes")
+  
+  elif x == "B'":
+    print("TRASEIRA sentido anti-horário")
+  
+  input()
