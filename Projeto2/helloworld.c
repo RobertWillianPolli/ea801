@@ -15,41 +15,55 @@
 // This sketch is a good place to start if you're just getting started with 
 // Pixy and Arduino.  This program simply prints the detected object blocks 
 // (including color codes) through the serial console.  It uses the Arduino's 
-// ICSP SPI port.  For more information go here:
+// ICSP port.  For more information go here:
 //
-// https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:hooking_up_pixy_to_a_microcontroller_-28like_an_arduino-29
+// http://cmucam.org/projects/cmucam5/wiki/Hooking_up_Pixy_to_a_Microcontroller_(like_an_Arduino)
 //
-  
-#include <Pixy2.h>
+// It prints the detected blocks once per second because printing all of the 
+// blocks for all 50 frames per second would overwhelm the Arduino's serial port.
+//
+   
+#include <SPI.h>  
+#include <Pixy.h>
 
 // This is the main Pixy object 
-Pixy2 pixy;
+Pixy pixy;
 
 void setup()
 {
-  Serial.begin(115200);
-  //Serial.print("Starting...\n");
-  
+  Serial.begin(9600);
+  Serial.print("Starting...\n");
+
   pixy.init();
 }
 
 void loop()
 { 
-  int i; 
-  // grab blocks!
-  pixy.ccc.getBlocks();
+  static int i = 0;
+  int j;
+  uint16_t blocks;
+  char buf[32]; 
   
-  // If there are detect 6 blocks, print them!
-  if (pixy.ccc.numBlocks == 6)
+  // grab blocks!
+  blocks = pixy.getBlocks();
+  
+  // If there are detect blocks, print them!
+  if (blocks)
   {
-    //Serial.print("Detected ");
-    Serial.println(pixy.ccc.numBlocks);
-    for (i=0; i<pixy.ccc.numBlocks; i++)
+    i++;
+    
+    // do this (print) every 50 frames because printing every
+    // frame would bog down the Arduino
+    if (i%50==0)
     {
-      //Serial.print("  block ");
-      //Serial.print(i);
-      //Serial.print(": ");
-      pixy.ccc.blocks[i].print();
+      sprintf(buf, "Detected %d:\n", blocks);
+      Serial.print(buf);
+      for (j=0; j<blocks; j++)
+      {
+        sprintf(buf, "  block %d: ", j);
+        Serial.print(buf); 
+        pixy.blocks[j].print();
+      }
     }
   }  
 }
