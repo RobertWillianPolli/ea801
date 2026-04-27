@@ -23,6 +23,7 @@ for faces in ["Superior", "Direita", "Frontal", "Inferior", "Esquerda", "Traseir
         # Atualiza string de faces do cubo     
         facesDado += dado_lido        
 
+# Ordem = superior (U), direita (R), frontal (F), inferior (D), esquerda (L), traseira (B)
 converter = {"W":"U", 
              "R":"F", 
              "G":"L", 
