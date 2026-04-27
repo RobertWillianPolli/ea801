@@ -23,6 +23,16 @@ for faces in ["Superior", "Direita", "Frontal", "Inferior", "Esquerda", "Traseir
         # Atualiza string de faces do cubo     
         facesDado += dado_lido        
 
+converter = {"W":"U", 
+             "R":"F", 
+             "G":"L", 
+             "Y":"D", 
+             "O":"B", 
+             "B":"R"}
+
+scrambled_cube = ""
+scrambled_cube = "".join(converter[f] for f in facesDado)
+
 # Envia a sequência de cores para o solver
 solution = kociemba.solve(scrambled_cube)
 # Exibe a solução
