@@ -1,10 +1,12 @@
 #include <SPI.h>  
 #include <Pixy.h>
 
+// Cria instância para comunicação com a Pixycam
 Pixy pixy;
 
 void setup()
 {
+  // Configura a comunicação serial e inicia a Pixycam
   Serial.begin(9600);
   pixy.init();
 }
@@ -13,14 +15,15 @@ void loop()
 {
   static int i = 0;
   uint16_t blocks;
+
+  // Recebe dados lidos pela câmera
   blocks = pixy.getBlocks();
   
-  // precisa ter exatamente 9 blocos
   if (blocks)
   {
     i++;
     
-    // reduz frequência de print
+    // Reduz frequência de prints
     if (i % 30 == 0)
     {
       int j;
@@ -31,33 +34,33 @@ void loop()
       // achar limites
       for (j = 0; j < blocks; j++)
       {
-        int x = pixy.blocks[j].x;
-        int y = pixy.blocks[j].y;
+        int x = pixy.blocks[j].x; // Lê a posição no eixo x do bloco
+        int y = pixy.blocks[j].y; // Lê a posição no eixo y do bloco
 
-        if (x < xmin) xmin = x;
-        if (x > xmax) xmax = x;
-        if (y < ymin) ymin = y;
-        if (y > ymax) ymax = y;
+        if (x < xmin) xmin = x; //
+        if (x > xmax) xmax = x; //
+        if (y < ymin) ymin = y; //
+        if (y > ymax) ymax = y; // Define as posições limites dos blocos lidos 
       }
 
-      float dx = (xmax - xmin) / 3.0;
-      float dy = (ymax - ymin) / 3.0;
+      float dx = (xmax - xmin) / 3.0;  //
+      float dy = (ymax - ymin) / 3.0;  // Calcula o tamanho de cada cor 
 
-      char face[3][3];
+      char face[3][3];    // Cria a matriz da face
 
-      // inicializa com '?'
+      // Inicializa a matriz com '?'
       for (int r = 0; r < 3; r++)
         for (int c = 0; c < 3; c++)
           face[r][c] = '?';
 
-      // preencher matriz
+      // Preencher matriz
       for (j = 0; j < blocks; j++)
       {
-        int x = pixy.blocks[j].x;
-        int y = pixy.blocks[j].y;
+        int x = pixy.blocks[j].x;  // Lê a posição no eixo x da cor
+        int y = pixy.blocks[j].y;  // Lê a posição no eixo y da cor
 
-        int col = (int)((x - xmin) / dx);
-        int row = (int)((y - ymin) / dy);
+        int col = (int)((x - xmin) / dx);  // Estima a coluna da cor lida
+        int row = (int)((y - ymin) / dy);  // Estima a linha da cor lida
 
         if (col < 0) col = 0;
         if (col > 2) col = 2;
@@ -66,6 +69,7 @@ void loop()
 
         char cor;
 
+        // Converte o dado lido pela sua cor correspondente
         switch (pixy.blocks[j].signature)
         {
           case 1: cor = 'G'; break; // verde
@@ -77,10 +81,10 @@ void loop()
           default: cor = 'W';       // branco como default
         }
 
-        face[row][col] = cor;
+        face[row][col] = cor;  // Preenche a matriz com as respectivas cores
       }
 
-      // gerar string final
+      // Converte a matriz 3x3 em uma string
       char resultado[10];
       int k = 0;
 
@@ -91,8 +95,10 @@ void loop()
           resultado[k++] = face[r][c];
         }
       }
+      // Adiciona caractere de finalização da string
+      resultado[k] = '\0';  
 
-      resultado[k] = '\0';
+      // Envia o resultado pela serial
       Serial.println(resultado);
     }
   }
