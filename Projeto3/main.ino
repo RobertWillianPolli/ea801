@@ -12,7 +12,7 @@ const int penZDown = 50;
 // Servo controlado pelo PWM no pino 10
 const int penServoPin = 10 ;
 
-// Should be right for DVD steppers, but is not too important here
+// Quantidade de passos a cada volta dos motores de passo
 const int stepsPerRevolution = 48;
 
 // Cria objeto para controlar o servo
@@ -56,16 +56,8 @@ float Xpos = Xmin;
 float Ypos = Ymin;
 float Zpos = Zmax;
 
-// Set to true to get debug output.
+// Variável para controle do debug
 boolean verbose = false;
-
-//  Needs to interpret
-//  G1 for moving
-//  G4 P300 (wait 150ms)
-//  M300 S30 (pen down)
-//  M300 S50 (pen up)
-//  Discard anything with a (
-//  Discard any other command!
 
 void setup() {
   //  Setup
@@ -113,13 +105,27 @@ void loop()
 
   while (1) {
     // Looping principal para recepção dos comandos via serial. Mostly from Grbl, added semicolon support
+
+    //  Comandos g-code
+    //  G1: Comando de movimento
+    //  G4: Comando de espera
+    //  M300: Comando de controle do servo
+    //  M114: Leitura da posição atual do cabeçote
+    //  Descarta qualquer comando com (
+    //  Descarta qualquer outro comando
+    
+    //  Ex:
+    //      G1 X60 Y30  - Movimenta 60 em x e 30 em y
+    //      G4 P300     - Aguarda 150ms
+    //      M300 S30    - Abaixa o cabeçote
+    //      M300 S50    - Levanta o cabeçote    
     
     while (Serial.available() > 0) {                  // Aguarda recebimento de char               
       c = Serial.read();                              // Lê um caractere da serial
       
-      if ((c == '\n') || (c == '\r')) {               // End of line reached
-        if (lineIndex > 0) {                          // Line is complete. Then execute!
-          line[lineIndex] = '\0';                     // Terminate string
+      if ((c == '\n') || (c == '\r')) {               // Fim da linha!
+        if (lineIndex > 0) {                          // Leitura da linha completa. Então, executa-a.
+          line[lineIndex] = '\0';                     // Adiciona a terminação na string
           if (verbose) {
             Serial.print("Received : ");
             Serial.println(line);
@@ -135,30 +141,30 @@ void loop()
         Serial.println("ok");
       }
       else {
-        if ((lineIsComment) || (lineSemiColon)) {    // Throw away all comment characters
-          if (c == ')')  lineIsComment = false;     // End of comment. Resume line.
+        if ((lineIsComment) || (lineSemiColon)) {   // A partir desse caractere, os demais são parte de um comentário
+          if (c == ')')  lineIsComment = false;     // Fim do comentário, que ocorre entre parênteses ("comentário em g-code")
         }
         else {
-          if (c <= ' ') {                           // Throw away whitepace and control characters
+          if (c <= ' ') {                           // Descarta caracteres de espaço e de controle
           }
-          else if (c == '/') {                    // Block delete not supported. Ignore character.
+          else if (c == '/') {                      // O programa não suporta esse recurso, então apenas ignora
           }
-          else if (c == '(') {                    // Enable comments flag and ignore all characters until ')' or EOL.
+          else if (c == '(') {                      // Habilita a flag de comentário e ignora todos os caracteres até encontrar ')' ou EOL.
             lineIsComment = true;
           }
-          else if (c == ';') {
+          else if (c == ';') {                      // Início de um comentário
             lineSemiColon = true;
           }
-          else if (lineIndex >= LINE_BUFFER_LENGTH - 1) {
-            Serial.println("ERROR - lineBuffer overflow");
+          else if (lineIndex >= LINE_BUFFER_LENGTH - 1) {    // Verifica se o buffer de comando sofreu overflow.
+            Serial.println("ERRO - lineBuffer overflow");
             lineIsComment = false;
             lineSemiColon = false;
           }
-          else if (c >= 'a' && c <= 'z') {        // Upcase lowercase
+          else if (c >= 'a' && c <= 'z') {        // Converte caractere minúsculo em maiúsculo
             line[lineIndex++] = c - 'a' + 'A';
           }
           else {
-            line[lineIndex++] = c;
+            line[lineIndex++] = c;                // Armazena o comando recebido
           }
         }
       }
@@ -168,69 +174,59 @@ void loop()
 
 void processIncomingLine(char* line, int charNB) {
   int currentIndex = 0;
-  char buffer[64];                                 // Hope that 64 is enough for 1 parameter
+  char buffer[64];                                 
   struct point newPos;
 
   newPos.x = 0.0;
   newPos.y = 0.0;
 
-  //  Needs to interpret
-  //  G1 for moving
-  //  G4 P300 (wait 150ms)
-  //  G1 X60 Y30
-  //  G1 X30 Y50
-  //  M300 S30 (pen down)
-  //  M300 S50 (pen up)
-  //  Discard anything with a (
-  //  Discard any other command!
-
   while (currentIndex < charNB) {
-    switch (line[currentIndex++]) {              // Select command, if any
+    switch (line[currentIndex++]) {              // Caso o g-code converter gere comandos mais simples para movimentação da caneta (TESTAR!)
       case 'U':
         penUp();
         break;
+      
       case 'D':
         penDown();
         break;
-      case 'G':
-        buffer[0] = line[currentIndex++];          // /!\ Dirty - Only works with 2 digit commands
-        //      buffer[1] = line[ currentIndex++ ];
-        //      buffer[2] = '\0';
+      
+      case 'G':                                    // Comando de controle
+        buffer[0] = line[currentIndex++];          // Lê o número do comando de controle
         buffer[1] = '\0';
 
-        switch (atoi(buffer)) {                  // Select G command
-          case 0:                                   // G00 & G01 - Movement or fast movement. Same here
+        switch (atoi(buffer)) {                    // Converte o comando, de str para int
+          case 0:                                  // G00 & G01 - Movimento linear
           case 1:
-            // /!\ Dirty - Suppose that X is before Y
-            char* indexX = strchr(line + currentIndex, 'X'); // Get X/Y position in the string (if any)
-            char* indexY = strchr(line + currentIndex, 'Y');
-            if (indexY <= 0) {
-              newPos.x = atof(indexX + 1);
-              newPos.y = actuatorPos.y;
+            // Supõe que a posição X vem antes de Y
+            char* indexX = strchr(line + currentIndex, 'X'); // Procura o caractere "X" na string line a partir a posição atual
+            char* indexY = strchr(line + currentIndex, 'Y'); // Procura o caractere "Y" na string line a partir a posição atual
+            
+            if (indexY <= 0) {              // Comando apenas para o movimento no eixo X
+              newPos.x = atof(indexX + 1);  // Converte a string lida em float
+              newPos.y = actuatorPos.y;     // Mantém a posição em y
             }
-            else if (indexX <= 0) {
-              newPos.y = atof(indexY + 1);
-              newPos.x = actuatorPos.x;
+            else if (indexX <= 0) {         // Comando apenas para o movimento no eixo y
+              newPos.y = atof(indexY + 1);  // Converte a string lida em float
+              newPos.x = actuatorPos.x;     // Mantém a posição em x
             }
             else {
-              newPos.y = atof(indexY + 1);
-              indexY = '\0';
-              newPos.x = atof(indexX + 1);
+              newPos.y = atof(indexY + 1);  // Converte a string lida em float
+              newPos.x = atof(indexX + 1);  // Converte a string lida em float
             }
-            drawLine(newPos.x, newPos.y);
-            //        Serial.println("ok");
-            actuatorPos.x = newPos.x;
-            actuatorPos.y = newPos.y;
+            drawLine(newPos.x, newPos.y);   // Desenha a posição lida
+
+            actuatorPos.x = newPos.x;       //
+            actuatorPos.y = newPos.y;       // Atualiza a posição atual
             break;
         }
         break;
       case 'M':
-        buffer[0] = line[currentIndex++];        // /!\ Dirty - Only works with 3 digit commands
+        buffer[0] = line[currentIndex++];
         buffer[1] = line[currentIndex++];
         buffer[2] = line[currentIndex++];
         buffer[3] = '\0';
         switch (atoi(buffer)) {
-          case 300:
+          case 300:                // Comando de movimentação do cabeçote
             {
               char* indexS = strchr(line + currentIndex, 'S');
               float Spos = atof(indexS + 1);
@@ -243,21 +239,18 @@ void processIncomingLine(char* line, int charNB) {
               }
               break;
             }
-          case 114:                                // M114 - Repport position
+          case 114:                // Comando de report da posição do cabeçote
             Serial.print("Absolute position : X = " );
             Serial.print(actuatorPos.x );
             Serial.print("  -  Y = " );
             Serial.println(actuatorPos.y);
             break;
           default:
-            Serial.print("Command not recognized : M");
+            Serial.print("Commando não reconhecido : M");
             Serial.println(buffer);
         }
     }
   }
-
-
-
 }
 
 void drawLine(float x1, float y1) {
@@ -308,7 +301,7 @@ void drawLine(float x1, float y1) {
   float x0 = Xpos;
   float y0 = Ypos;
 
-  //  Let's find out the change for the coordinates
+  //  Calcula a variação das coordenadas e a direção do giro do motor
   long dx = abs(x1 - x0);
   long dy = abs(y1 - y0);
   int sx = x0 < x1 ? StepInc : -StepInc;
@@ -360,7 +353,7 @@ void drawLine(float x1, float y1) {
 
   //  Delay before any next lines are submitted
   delay(LineDelay);
-  //  Update the positions
+  //  Atualiza a posição atual do cabeçote
   Xpos = x1;
   Ypos = y1;
 }
@@ -369,9 +362,11 @@ void drawLine(float x1, float y1) {
 void penUp() {
   penServo.write(penZUp);
   delay(penDelay);
+  
   Zpos = Zmax;
   digitalWrite(15, LOW);
   digitalWrite(16, HIGH);
+  
   if (verbose) {
     Serial.println("Cabeçote up!");
   }
@@ -380,9 +375,11 @@ void penUp() {
 void penDown() {
   penServo.write(penZDown);
   delay(penDelay);
+  
   Zpos = Zmin;
   digitalWrite(15, HIGH);
   digitalWrite(16, LOW);
+  
   if (verbose) {
     Serial.println("Cabeçote down.");
   }
