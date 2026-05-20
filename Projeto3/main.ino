@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <string.h>
 #include <Servo.h>
 #include <AFMotor.h>
 
@@ -46,29 +48,26 @@ float StepsPerMillimeterX = 100.0;
 float StepsPerMillimeterY = 100.0;
 
 // Limites do desenho, em mm
-float Xmin = 0;
-float Xmax = 40;
-float Ymin = 0;
-float Ymax = 40;
-float Zmin = 0;
-float Zmax = 1;
+int Xmin = 0;
+int Xmax = 40;
+int Ymin = 0;
+int Ymax = 40;
+int Zmin = 0;
+int Zmax = 1;
 
-float Xpos = Xmin;
-float Ypos = Ymin;
-float Zpos = Zmax;
-
-// Variável para controle do debug
-boolean verbose = false;
+int Xpos = Xmin;
+int Ypos = Ymin;
+int Zpos = Zmax;
 
 char line[LINE_BUFFER_LENGTH];
 char c;
-int lineIndex;
-bool lineIsComment, lineSemiColon;
+int lineIndex = 0;
+bool lineSemiColon = false;
+bool lineIsComment = false;
 
-lineIndex = 0;
-lineSemiColon = false;
-lineIsComment = false;
 
+const int penCtrlPin1 = 15;
+const int penCtrlPin2 = 16;
 
 void setup() {
   //  Setup
@@ -127,35 +126,23 @@ void loop()
       if ((c == '\n') || (c == '\r')) {               // Fim da linha!
         if (lineIndex > 0) {                          // Leitura da linha completa. Então, executa-a.
           line[lineIndex] = '\0';                     // Adiciona a terminação na string
-          if (verbose) {
-            Serial.print("Received : ");
-            Serial.println(line);
-          }
           processIncomingLine(line, lineIndex);
           lineIndex = 0;
-        }
-        else {
-          // Empty or comment line. Skip block.
         }
         lineIsComment = false;
         lineSemiColon = false;
         Serial.println("ok");
       }
       else {
-        if ((lineIsComment) || (lineSemiColon)) {   // A partir desse caractere, os demais são parte de um comentário
+        if (lineIsComment || lineSemiColon) {   // A partir desse caractere, os demais são parte de um comentário
           if (c == ')')  lineIsComment = false;     // Fim do comentário, que ocorre entre parênteses ("comentário em g-code")
         }
         else {
-          if (c <= ' ') {                           // Descarta caracteres de espaço e de controle
-          }
-          else if (c == '/') {                      // O programa não suporta esse recurso, então apenas ignora
-          }
-          else if (c == '(') {                      // Habilita a flag de comentário e ignora todos os caracteres até encontrar ')' ou EOL.
-            lineIsComment = true;
-          }
-          else if (c == ';') {                      // Início de um comentário
-            lineSemiColon = true;
-          }
+          if (c <= ' ') {}                             // Descarta caracteres de espaço e de controle
+          else if (c == '/') {}                        // O programa não suporta esse recurso, então apenas ignora
+          else if (c == '(') lineIsComment = true;     // Habilita a flag de comentário e ignora todos os caracteres até encontrar ')' ou EOL.
+          else if (c == ';') lineSemiColon = true;     // Início de um comentário
+
           else if (lineIndex >= LINE_BUFFER_LENGTH - 1) {    // Verifica se o buffer de comando sofreu overflow.
             Serial.println("ERRO - lineBuffer overflow");
             lineIsComment = false;
@@ -176,20 +163,14 @@ void processIncomingLine(char* line, int charNB) {
   int currentIndex = 0;
   char buffer[64];                                 
   struct point newPos;
-
-  newPos.x = 0.0;
-  newPos.y = 0.0;
+  
+  newPos.x = actuatorPos.x;
+  newPos.y = actuatorPos.y;
 
   while (currentIndex < charNB) {
     switch (line[currentIndex++]) {              // Caso o g-code converter gere comandos mais simples para movimentação da caneta (TESTAR!)
-      case 'U':
-        penUp();
-        break;
-      
-      case 'D':
-        penDown();
-        break;
-      
+      case 'U': penUp(); break;
+      case 'D': penDown(); break;
       case 'G':                                    // Comando de controle
         buffer[0] = line[currentIndex++];          // Lê o número do comando de controle
         buffer[1] = '\0';
@@ -201,21 +182,9 @@ void processIncomingLine(char* line, int charNB) {
             char* indexX = strchr(line + currentIndex, 'X'); // Procura o caractere "X" na string line a partir a posição atual
             char* indexY = strchr(line + currentIndex, 'Y'); // Procura o caractere "Y" na string line a partir a posição atual
             
-            if (indexX != NULL) && (indexY == NULL) {              // Comando apenas para o movimento no eixo X
-              newPos.x = atof(indexX + 1);  // Converte a string lida em float
-              newPos.y = actuatorPos.y;     // Mantém a posição em y
-            }
-            else if (indexX == NULL) && (indexY != NULL){         // Comando apenas para o movimento no eixo y
-              newPos.x = actuatorPos.x;     // Mantém a posição em x
-              newPos.y = atof(indexY + 1);  // Converte a string lida em float 
-            }
-            else if (indexX != NULL) && (indexY != NULL){
-              newPos.x = atof(indexX + 1);  // Converte a string lida em float
-              newPos.y = atof(indexY + 1);  // Converte a string lida em float
-            }
-            else{
-              break
-            }
+            if (indexX != NULL) newPos.x = atof(indexX + 1);
+            if (indexY != NULL) newPos.y = atof(indexY + 1);
+            
             drawLine(newPos.x, newPos.y);   // Desenha a posição lida
 
             actuatorPos.x = newPos.x;       //
@@ -223,28 +192,27 @@ void processIncomingLine(char* line, int charNB) {
             break;
         }
         break;
+      
       case 'M':
-        buffer[0] = line[currentIndex++];
-        buffer[1] = line[currentIndex++];
-        buffer[2] = line[currentIndex++];
+        for (int i = 0; i < 3; i++) buffer[i] = line[currentIndex++];
         buffer[3] = '\0';
-        switch (atoi(buffer)) {
+
+        int mCmd = atoi(buffer);
+        
+        switch (mCmd) {
           case 300:                // Comando de movimentação do cabeçote
             {
               char* indexS = strchr(line + currentIndex, 'S');
 
               if (indexS != NULL){
-                float Spos = atof(indexS + 1);
-              }
+                float Spos = atoi(indexS + 1);
               
-              if (Spos == 30) {
-                penDown();
-              }
-              else if (Spos == 50) {
-                penUp();
-              }
-              else{
-                // Impossível
+                if (Spos == 30) {
+                  penDown();
+                }
+                else if (Spos == 50) {
+                  penUp();
+                }
               }
               break;
             }
@@ -258,57 +226,24 @@ void processIncomingLine(char* line, int charNB) {
             Serial.print("Commando não reconhecido : M");
             Serial.println(buffer);
         }
+      break;
     }
   }
 }
 
 void drawLine(float x1, float y1) {
-  if (verbose)
-  {
-    Serial.print("fx1, fy1: ");
-    Serial.print(x1);
-    Serial.print(",");
-    Serial.print(y1);
-    Serial.println("");
-  }
 
   //  Limitando a atuação do cabeçote
-  if (x1 >= Xmax) {
-    x1 = Xmax;
-  }
-  if (x1 <= Xmin) {
-    x1 = Xmin;
-  }
-  if (y1 >= Ymax) {
-    y1 = Ymax;
-  }
-  if (y1 <= Ymin) {
-    y1 = Ymin;
-  }
-
-  if (verbose)
-  {
-    Serial.print("Xpos, Ypos: ");
-    Serial.print(Xpos);
-    Serial.print(",");
-    Serial.print(Ypos);
-    Serial.println("");
-  }
-
-  if (verbose)
-  {
-    Serial.print("x1, y1: ");
-    Serial.print(x1);
-    Serial.print(",");
-    Serial.print(y1);
-    Serial.println("");
-  }
+  if (x1 > Xmax) x1 = Xmax;
+  if (x1 < Xmin) x1 = Xmin;
+  if (y1 > Ymax) y1 = Ymax;
+  if (y1 < Ymin) y1 = Ymin;
 
   //  Converte coordenadas em passos
   x1 = (int)(x1 * StepsPerMillimeterX);
   y1 = (int)(y1 * StepsPerMillimeterY);
-  float x0 = Xpos;
-  float y0 = Ypos;
+  int x0 = Xpos;
+  int y0 = Ypos;
 
   //  Calcula a variação das coordenadas e a direção do giro do motor
   long dx = abs(x1 - x0);
@@ -342,24 +277,6 @@ void drawLine(float x1, float y1) {
     }
   }
 
-  if (verbose)
-  {
-    Serial.print("dx, dy:");
-    Serial.print(dx);
-    Serial.print(",");
-    Serial.print(dy);
-    Serial.println("");
-  }
-
-  if (verbose)
-  {
-    Serial.print("Going to (");
-    Serial.print(x0);
-    Serial.print(",");
-    Serial.print(y0);
-    Serial.println(")");
-  }
-
   //  Delay before any next lines are submitted
   delay(LineDelay);
   //  Atualiza a posição atual do cabeçote
@@ -373,12 +290,8 @@ void penUp() {
   delay(penDelay);
   
   Zpos = Zmax;
-  digitalWrite(15, LOW);
-  digitalWrite(16, HIGH);
-  
-  if (verbose) {
-    Serial.println("Cabeçote up!");
-  }
+  digitalWrite(penCtrlPin1, LOW);
+  digitalWrite(penCtrlPin2, HIGH);
 }
 //  Abaixa o cabeçote
 void penDown() {
@@ -386,10 +299,6 @@ void penDown() {
   delay(penDelay);
   
   Zpos = Zmin;
-  digitalWrite(15, HIGH);
-  digitalWrite(16, LOW);
-  
-  if (verbose) {
-    Serial.println("Cabeçote down.");
-  }
+  digitalWrite(penCtrlPin1, HIGH);
+  digitalWrite(penCtrlPin2, LOW);
 }
