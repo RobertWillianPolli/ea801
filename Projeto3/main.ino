@@ -4,7 +4,7 @@
 #define LINE_BUFFER_LENGTH 512
 
 // Define o tipo de movimento do motor
-#define STEP MICROSTEP;
+#define STEP MICROSTEP
 
 // Posição Up e Down do servo
 const int penZUp = 90;
@@ -60,6 +60,16 @@ float Zpos = Zmax;
 // Variável para controle do debug
 boolean verbose = false;
 
+char line[LINE_BUFFER_LENGTH];
+char c;
+int lineIndex;
+bool lineIsComment, lineSemiColon;
+
+lineIndex = 0;
+lineSemiColon = false;
+lineIsComment = false;
+
+
 void setup() {
   //  Setup
 
@@ -95,16 +105,6 @@ void setup() {
 void loop()
 {
   delay(100);
-  char line[LINE_BUFFER_LENGTH];
-  char c;
-  int lineIndex;
-  bool lineIsComment, lineSemiColon;
-
-  lineIndex = 0;
-  lineSemiColon = false;
-  lineIsComment = false;
-
-  while (1) {
     // Looping principal para recepção dos comandos via serial. Mostly from Grbl, added semicolon support
 
     //  Comandos g-code
@@ -170,7 +170,6 @@ void loop()
         }
       }
     }
-  }
 }
 
 void processIncomingLine(char* line, int charNB) {
@@ -202,17 +201,20 @@ void processIncomingLine(char* line, int charNB) {
             char* indexX = strchr(line + currentIndex, 'X'); // Procura o caractere "X" na string line a partir a posição atual
             char* indexY = strchr(line + currentIndex, 'Y'); // Procura o caractere "Y" na string line a partir a posição atual
             
-            if (indexY <= 0) {              // Comando apenas para o movimento no eixo X
+            if (indexX != NULL) && (indexY == NULL) {              // Comando apenas para o movimento no eixo X
               newPos.x = atof(indexX + 1);  // Converte a string lida em float
               newPos.y = actuatorPos.y;     // Mantém a posição em y
             }
-            else if (indexX <= 0) {         // Comando apenas para o movimento no eixo y
-              newPos.y = atof(indexY + 1);  // Converte a string lida em float
+            else if (indexX == NULL) && (indexY != NULL){         // Comando apenas para o movimento no eixo y
               newPos.x = actuatorPos.x;     // Mantém a posição em x
+              newPos.y = atof(indexY + 1);  // Converte a string lida em float 
             }
-            else {
-              newPos.y = atof(indexY + 1);  // Converte a string lida em float
+            else if (indexX != NULL) && (indexY != NULL){
               newPos.x = atof(indexX + 1);  // Converte a string lida em float
+              newPos.y = atof(indexY + 1);  // Converte a string lida em float
+            }
+            else{
+              break
             }
             drawLine(newPos.x, newPos.y);   // Desenha a posição lida
 
@@ -230,13 +232,19 @@ void processIncomingLine(char* line, int charNB) {
           case 300:                // Comando de movimentação do cabeçote
             {
               char* indexS = strchr(line + currentIndex, 'S');
-              float Spos = atof(indexS + 1);
-              //         Serial.println("ok");
+
+              if (indexS != NULL){
+                float Spos = atof(indexS + 1);
+              }
+              
               if (Spos == 30) {
                 penDown();
               }
-              if (Spos == 50) {
+              else if (Spos == 50) {
                 penUp();
+              }
+              else{
+                // Impossível
               }
               break;
             }
