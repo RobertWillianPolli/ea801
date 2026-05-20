@@ -3,7 +3,8 @@
 
 #define LINE_BUFFER_LENGTH 512
 
-char STEP = MICROSTEP;
+// Define o tipo de movimento do motor
+#define STEP MICROSTEP;
 
 // Posição Up e Down do servo
 const int penZUp = 90;
