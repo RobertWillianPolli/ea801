@@ -6,7 +6,7 @@
 #define LINE_BUFFER_LENGTH 512
 
 // Define o tipo de movimento do motor
-#define STEP MICROSTEP
+#define STEP DOUBLE
 
 // Posição Up e Down do servo
 const int penZUp = 90;
@@ -22,8 +22,8 @@ const int stepsPerRevolution = 48;
 Servo penServo;
 
 // Inicialize os motores de passo dos eixos X e Y usando estes pinos do Arduino para a ponte H L293D.
-AF_Stepper myStepperY(stepsPerRevolution, 1);
-AF_Stepper myStepperX(stepsPerRevolution, 2);
+AF_Stepper myStepperY(stepsPerRevolution, 2);
+AF_Stepper myStepperX(stepsPerRevolution, 1);
 
 /* Structures, global variables    */
 struct point {
@@ -37,15 +37,15 @@ struct point actuatorPos;
 
 //  Configs de desenho
 float StepInc = 1;
-int StepDelay = 0;
+int StepDelay = 2;
 int LineDelay = 0;
 int penDelay = 50;
 
 // O motor avança 1 milímetro por passo.
 // Use um esboço de teste para percorrer 100 passos. Meça o comprimento da linha.
 // Calcular passos por mm. Insira aqui.
-float StepsPerMillimeterX = 100.0;
-float StepsPerMillimeterY = 100.0;
+float StepsPerMillimeterX = 10.0;
+float StepsPerMillimeterY = 10.0;
 
 // Limites do desenho, em mm
 int Xmin = 0;
@@ -73,6 +73,8 @@ void setup() {
   //  Setup
 
   Serial.begin(9600);
+  pinMode(penCtrlPin1, OUTPUT);
+  pinMode(penCtrlPin2, OUTPUT);
 
   // Inicializa o servo motor na posição Up
   penServo.attach(penServoPin);
@@ -80,8 +82,8 @@ void setup() {
   delay(100);
 
   // Configura a velocidade dos servos motores
-  myStepperX.setSpeed(600);
-  myStepperY.setSpeed(600);
+  myStepperX.setSpeed(30);
+  myStepperY.setSpeed(30);
 
 
   // Mover cabeçote para a posição inicial
@@ -186,7 +188,7 @@ void processIncomingLine(char* line, int charNB) {
             if (indexY != NULL) newPos.y = atof(indexY + 1);
             
             drawLine(newPos.x, newPos.y);   // Desenha a posição lida
-
+            
             actuatorPos.x = newPos.x;       //
             actuatorPos.y = newPos.y;       // Atualiza a posição atual
             break;
@@ -231,25 +233,25 @@ void processIncomingLine(char* line, int charNB) {
   }
 }
 
-void drawLine(float x1, float y1) {
+void drawLine(float x11, float y11) {
 
   //  Limitando a atuação do cabeçote
-  if (x1 > Xmax) x1 = Xmax;
-  if (x1 < Xmin) x1 = Xmin;
-  if (y1 > Ymax) y1 = Ymax;
-  if (y1 < Ymin) y1 = Ymin;
+  if (x11 > Xmax) x11 = Xmax;
+  if (x11 < Xmin) x11 = Xmin;
+  if (y11 > Ymax) y11 = Ymax;
+  if (y11 < Ymin) y11 = Ymin;
 
   //  Converte coordenadas em passos
-  x1 = (int)(x1 * StepsPerMillimeterX);
-  y1 = (int)(y1 * StepsPerMillimeterY);
+  int x1 = (int)(x11 * StepsPerMillimeterX);
+  int y1 = (int)(y11 * StepsPerMillimeterY);
   int x0 = Xpos;
   int y0 = Ypos;
 
   //  Calcula a variação das coordenadas e a direção do giro do motor
   long dx = abs(x1 - x0);
   long dy = abs(y1 - y0);
-  int sx = x0 < x1 ? StepInc : -StepInc;
-  int sy = y0 < y1 ? StepInc : -StepInc;
+  uint8_t sx = x0 < x1 ? BACKWARD: FORWARD;
+  uint8_t sy = y0 < y1 ? BACKWARD: FORWARD;
 
   long i;
   long over = 0;
@@ -276,7 +278,7 @@ void drawLine(float x1, float y1) {
       delay(StepDelay);
     }
   }
-
+ 
   //  Delay before any next lines are submitted
   delay(LineDelay);
   //  Atualiza a posição atual do cabeçote
