@@ -9,8 +9,8 @@
 #define STEP DOUBLE
 
 // Posição Up e Down do servo
-const int penZUp = 90;
-const int penZDown = 50;
+const int penZUp = 30;
+const int penZDown = 90;
 
 // Servo controlado pelo PWM no pino 10
 const int penServoPin = 10 ;
