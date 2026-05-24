@@ -44,8 +44,8 @@ int penDelay = 50;
 // O motor avança 1 milímetro por passo.
 // Use um esboço de teste para percorrer 100 passos. Meça o comprimento da linha.
 // Calcular passos por mm. Insira aqui.
-float StepsPerMillimeterX = 10.0;
-float StepsPerMillimeterY = 10.0;
+float StepsPerMillimeterX = 6.875;
+float StepsPerMillimeterY = 7.1875;
 
 // Limites do desenho, em mm
 int Xmin = 0;
@@ -236,10 +236,10 @@ void processIncomingLine(char* line, int charNB) {
 void drawLine(float x11, float y11) {
 
   //  Limitando a atuação do cabeçote
-  if (x11 > Xmax) x11 = Xmax;
-  if (x11 < Xmin) x11 = Xmin;
-  if (y11 > Ymax) y11 = Ymax;
-  if (y11 < Ymin) y11 = Ymin;
+  //if (x11 > Xmax) x11 = Xmax;
+  //if (x11 < Xmin) x11 = Xmin;
+  //if (y11 > Ymax) y11 = Ymax;
+  //if (y11 < Ymin) y11 = Ymin;
 
   //  Converte coordenadas em passos
   int x1 = (int)(x11 * StepsPerMillimeterX);
