@@ -18,34 +18,11 @@ const int penServoPin = 10 ;
 // Quantidade de passos a cada volta dos motores de passo
 const int stepsPerRevolution = 48;
 
-// Cria objeto para controlar o servo
-Servo penServo;
-
-// Inicialize os motores de passo dos eixos X e Y usando estes pinos do Arduino para a ponte H L293D.
-AF_Stepper myStepperY(stepsPerRevolution, 2);
-AF_Stepper myStepperX(stepsPerRevolution, 1);
-
-/* Structures, global variables    */
-struct point {
-  float x;
-  float y;
-  float z;
-};
-
-// Posição atual do cabeçote
-struct point actuatorPos;
-
 //  Configs de desenho
 float StepInc = 1;
 int StepDelay = 2;
 int LineDelay = 0;
 int penDelay = 50;
-
-// O motor avança 1 milímetro por passo.
-// Use um esboço de teste para percorrer 100 passos. Meça o comprimento da linha.
-// Calcular passos por mm. Insira aqui.
-float StepsPerMillimeterX = 6.875;
-float StepsPerMillimeterY = 7.1875;
 
 // Limites do desenho, em mm
 int Xmin = 0;
@@ -65,9 +42,31 @@ int lineIndex = 0;
 bool lineSemiColon = false;
 bool lineIsComment = false;
 
-
 const int penCtrlPin1 = 15;
 const int penCtrlPin2 = 16;
+
+/* Structures, global variables    */
+struct point {
+  float x;
+  float y;
+  float z;
+};
+
+// Posição atual do cabeçote
+struct point actuatorPos;
+
+// Cria objeto para controlar o servo
+Servo penServo;
+
+// O motor avança 1 milímetro por passo.
+// Use um esboço de teste para percorrer 100 passos. Meça o comprimento da linha.
+// Calcular passos por mm. Insira aqui.
+float StepsPerMillimeterX = 6.875;
+float StepsPerMillimeterY = 7.1875;
+
+// Inicialize os motores de passo dos eixos X e Y usando estes pinos do Arduino para a ponte H L293D.
+AF_Stepper myStepperY(stepsPerRevolution, 2);
+AF_Stepper myStepperX(stepsPerRevolution, 1);
 
 void setup() {
   //  Setup
@@ -81,7 +80,7 @@ void setup() {
   penServo.write(penZUp);
   delay(100);
 
-  // Configura a velocidade dos servos motores
+  // Configura a velocidade dos motores de passo
   myStepperX.setSpeed(30);
   myStepperY.setSpeed(30);
 
