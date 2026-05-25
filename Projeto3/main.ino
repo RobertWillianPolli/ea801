@@ -169,9 +169,7 @@ void processIncomingLine(char* line, int charNB) {
   newPos.y = actuatorPos.y;
 
   while (currentIndex < charNB) {
-    switch (line[currentIndex++]) {              // Caso o g-code converter gere comandos mais simples para movimentação da caneta (TESTAR!)
-      case 'U': penUp(); break;
-      case 'D': penDown(); break;
+    switch (line[currentIndex++]) {              
       case 'G':                                    // Comando de controle
         buffer[0] = line[currentIndex++];          // Lê o número do comando de controle
         buffer[1] = '\0';
