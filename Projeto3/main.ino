@@ -9,20 +9,45 @@
 #define STEP DOUBLE
 
 // Posição Up e Down do servo
-const int penZUp = 30;
-const int penZDown = 90;
+const int penZUp = 65;
+const int penZDown = 30;
 
 // Servo controlado pelo PWM no pino 10
-const int penServoPin = 10 ;
+const int penServoPin = 10;
 
 // Quantidade de passos a cada volta dos motores de passo
 const int stepsPerRevolution = 48;
 
+const int SMspeed = 1;
+
+// Cria objeto para controlar o servo
+Servo penServo;
+
+// Inicialize os motores de passo dos eixos X e Y usando estes pinos do Arduino para a ponte H L293D.
+AF_Stepper myStepperY(stepsPerRevolution, 2);
+AF_Stepper myStepperX(stepsPerRevolution, 1);
+
+/* Structures, global variables    */
+struct point {
+  float x;
+  float y;
+  float z;
+};
+
+// Posição atual do cabeçote
+struct point actuatorPos;
+
 //  Configs de desenho
 float StepInc = 1;
-int StepDelay = 2;
+int StepDelay = 10;
 int LineDelay = 0;
 int penDelay = 50;
+
+// O motor avança 1 milímetro por passo.
+// Use um esboço de teste para percorrer 100 passos. Meça o comprimento da linha.
+// Calcular passos por mm. Insira aqui.
+float StepsPerMillimeterX = 6.8966;
+float StepsPerMillimeterY = 6.6667;
 
 // Limites do desenho, em mm
 int Xmin = 0;
@@ -41,32 +66,10 @@ char c;
 int lineIndex = 0;
 bool lineSemiColon = false;
 bool lineIsComment = false;
+bool setZero = false;
 
 const int penCtrlPin1 = 15;
 const int penCtrlPin2 = 16;
-
-/* Structures, global variables    */
-struct point {
-  float x;
-  float y;
-  float z;
-};
-
-// Posição atual do cabeçote
-struct point actuatorPos;
-
-// Cria objeto para controlar o servo
-Servo penServo;
-
-// O motor avança 1 milímetro por passo.
-// Use um esboço de teste para percorrer 100 passos. Meça o comprimento da linha.
-// Calcular passos por mm. Insira aqui.
-float StepsPerMillimeterX = 6.875;
-float StepsPerMillimeterY = 7.1875;
-
-// Inicialize os motores de passo dos eixos X e Y usando estes pinos do Arduino para a ponte H L293D.
-AF_Stepper myStepperY(stepsPerRevolution, 2);
-AF_Stepper myStepperX(stepsPerRevolution, 1);
 
 void setup() {
   //  Setup
@@ -80,9 +83,9 @@ void setup() {
   penServo.write(penZUp);
   delay(100);
 
-  // Configura a velocidade dos motores de passo
-  myStepperX.setSpeed(30);
-  myStepperY.setSpeed(30);
+  // Configura a velocidade dos servos motores
+  myStepperX.setSpeed(SMspeed);
+  myStepperY.setSpeed(SMspeed);
 
 
   // Mover cabeçote para a posição inicial
@@ -109,6 +112,7 @@ void loop()
 
     //  Comandos g-code
     //  G1: Comando de movimento
+    //  G9: Movimento sem limite
     //  G4: Comando de espera
     //  M300: Comando de controle do servo
     //  M114: Leitura da posição atual do cabeçote
@@ -169,12 +173,14 @@ void processIncomingLine(char* line, int charNB) {
   newPos.y = actuatorPos.y;
 
   while (currentIndex < charNB) {
-    switch (line[currentIndex++]) {              
+    switch (line[currentIndex++]) {
       case 'G':                                    // Comando de controle
         buffer[0] = line[currentIndex++];          // Lê o número do comando de controle
         buffer[1] = '\0';
 
         switch (atoi(buffer)) {                    // Converte o comando, de str para int
+          case 9:
+            setZero = true;
           case 0:                                  // G00 & G01 - Movimento linear
           case 1:
             // Supõe que a posição X vem antes de Y
@@ -233,11 +239,13 @@ void processIncomingLine(char* line, int charNB) {
 void drawLine(float x11, float y11) {
 
   //  Limitando a atuação do cabeçote
-  if (x11 > Xmax) x11 = Xmax;
-  if (x11 < Xmin) x11 = Xmin;
-  if (y11 > Ymax) y11 = Ymax;
-  if (y11 < Ymin) y11 = Ymin;
-
+  if (!setZero){
+    if (x11 > Xmax) x11 = Xmax;
+    if (x11 < Xmin) x11 = Xmin;
+    if (y11 > Ymax) y11 = Ymax;
+    if (y11 < Ymin) y11 = Ymin;
+  }
+  setZero = false;
   //  Converte coordenadas em passos
   int x1 = (int)(x11 * StepsPerMillimeterX);
   int y1 = (int)(y11 * StepsPerMillimeterY);
@@ -279,8 +287,15 @@ void drawLine(float x11, float y11) {
   //  Delay before any next lines are submitted
   delay(LineDelay);
   //  Atualiza a posição atual do cabeçote
-  Xpos = x1;
-  Ypos = y1;
+
+  if (setZero){
+    Xpos = 0;
+    Ypos = 0;
+  }
+  else{
+    Xpos = x1;
+    Ypos = y1;
+  }
 }
 
 //  Levanta o cabeçote
